@@ -27,26 +27,45 @@ class IncrementUtils {
             printSplitLine(TAG)
             var revision = project.properties["revision"]
             var baseline = project.properties["baseline"]
-
             val command =
                 "git diff $baseline $revision --name-only --diff-filter=ACMRTUXB"
             println("开始执行：")
             println(command)
+
             val byteArray = Runtime.getRuntime()
                 .exec(command)
                 .inputStream
                 .readBytes()
             val diffFileStr = String(byteArray, Charsets.UTF_8)
             val diffFileList = diffFileStr.split("\n")
-
+            println()
             println("diff结果：")
             println(diffFileStr.removeSuffix("\n"))
+
+            val filterFileList = filterOtherModuleFile(diffFileList, project)
+            println()
+            println("当前Module为${project.name}，过滤掉其他Module文件真正进行lint扫描的文件如下：")
+            filterFileList.forEach {
+                println(it)
+            }
+
             lintRequest.getProjects()?.forEach { p ->
-                diffFileList.forEach {
+                filterFileList.forEach {
                     p.addFile(File(it))
                 }
             }
             printSplitLine(TAG)
+        }
+
+        /**
+         * 过滤其他module的文件，只扫当前module的
+         */
+        private fun filterOtherModuleFile(
+            originList: List<String>,
+            project: Project
+        ): List<String> {
+            val name = project.name
+            return originList.filter { it.startsWith(name) }
         }
     }
 }
